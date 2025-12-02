@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Internship Domain Recommender | StaxTech AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+        name="description"
+        content="AI-powered internship domain recommender that ranks domains based on your skills using content-based filtering and Jaccard similarity."
+    />
+
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at top, #22d3ee 0, #0f172a 42%, #020617 100%);
+            --glass-bg: rgba(15, 23, 42, 0.80);
+            --glass-border: rgba(148, 163, 184, 0.35);
+            --accent: #38bdf8;
+            --accent-soft: rgba(56, 189, 248, 0.2);
+            --accent-strong: #6366f1;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --pill-bg: rgba(15, 23, 42, 0.95);
+            --pill-border: rgba(148, 163, 184, 0.7);
+            --success: #4ade80;
+            --danger: #f97373;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .page-shell {
+            width: 100%;
+            max-width: 1120px;
+            padding: 24px 18px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* Header / Branding */
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            background: conic-gradient(
+                from 180deg,
+                #22c55e,
+                #22d3ee,
+                #6366f1,
+                #a855f7,
+                #22c55e
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 18px rgba(56, 189, 248, 0.5);
+        }
+
+        .brand-logo span {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #0b1120;
+        }
+
+        .brand-text-main {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-text-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .nav-pill {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            background: rgba(15, 23, 42, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+        }
+
+        /* Layout */
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+            gap: 18px;
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            border-radius: 18px;
+            border: 1px solid var(--glass-border);
+            padding: 18px 18px 16px;
+            box-shadow: 0 22px 40px rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .panel-title {
+            font-size: 0.98rem;
+            font-weight: 600;
+        }
+
+        .panel-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .panel-tag {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.6);
+        }
+
+        /* Input Section */
+
+        .section-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .skills-input {
+            width: 100%;
+            padding: 10px 11px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-main);
+            font-size: 0.88rem;
+            outline: none;
+            resize: none;
+            min-height: 56px;
+        }
+
+        .skills-input::placeholder {
+            color: #6b7280;
+        }
+
+        .skills-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+        }
+
+        .hint-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+            margin-bottom: 10px;
+        }
+
+        .hint-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .preset-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .preset-btn {
+            font-size: 0.72rem;
+            padding: 4px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.95);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: border 0.14s ease, background 0.14s ease, transform 0.08s ease;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            background: rgba(15, 23, 42, 1);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.9);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 20px 36px rgba(15, 23, 42, 0.95);
+            filter: brightness(1.05);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.8);
+            filter: brightness(0.96);
+        }
+
+        .btn-primary span.icon {
+            font-size: 1.1rem;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .chip {
+            font-size: 0.72rem;
+            padding: 4px 9px;
+            border-radius: 999px;
+            border: 1px dashed rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-muted);
+        }
+
+        /* Results / Right Panel */
+
+        .results-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .results-title {
+            font-size: 0.94rem;
+            font-weight: 600;
+        }
+
+        .results-meta {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .scroll-area {
+            max-height: 330px;
+            overflow-y: auto;
+            padding-right: 2px;
+            margin-top: 6px;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 999px;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: rgba(75, 85, 99, 0.9);
+            border-radius: 999px;
+        }
+
+        .result-card {
+            border-radius: 14px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            transition: transform 0.12s ease, border 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .result-card:first-of-type {
+            margin-top: 2px;
+        }
+
+        .result-card:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent);
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.9);
+        }
+
+        .result-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .result-domain {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .result-score {
+            font-size: 0.78rem;
+            color: #a5b4fc;
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
+        }
+
+        .pill {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--pill-border);
+            background: var(--pill-bg);
+            color: var(--text-main);
+        }
+
+        .pill.highlight {
+            border-color: rgba(52, 211, 153, 0.95);
+            background: rgba(22, 163, 74, 0.18);
+            color: #bbf7d0;
+        }
+
+        .pill.miss {
+            border-style: dashed;
+            border-color: rgba(248, 113, 113, 0.7);
+            color: #fecaca;
+        }
+
+        .empty-state {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .empty-state span {
+            color: var(--accent);
+        }
+
+        .panel-footer {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .panel-footer span.highlight {
+            color: var(--accent);
+        }
+
+        .panel-footer span.strong {
+            color: #c4b5fd;
+        }
+
+        footer.page-footer {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 880px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .scroll-area {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .page-shell {
+                padding-inline: 12px;
+            }
+
+            .nav {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-shell">
+        <!-- Top Nav / Branding -->
+        <header class="nav">
+            <div class="brand">
+                <div class="brand-logo">
+                    <span>AI</span>
+                </div>
+                <div>
+                    <div class="brand-text-main">StaxTech Internship Assistant</div>
+                    <div class="brand-text-sub">
+                        Content-based recommender · Built with vanilla JS
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-pill">
+                <span class="nav-dot"></span>
+                <span>AI · Recommendation Engine</span>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <main class="layout">
+            <!-- Left: Input Panel -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Describe your skills</div>
+                        <p class="panel-sub">
+                            Paste your technical skills from your resume or type them manually.
+                        </p>
+                    </div>
+                    <span class="panel-tag">Step 1 · Profile</span>
+                </div>
+
+                <p class="section-label">Skills (comma separated)</p>
+                <textarea
+                    id="skillsInput"
+                    class="skills-input"
+                    placeholder="e.g. python, statistics, pandas, html, css, figma, sql"
+                ></textarea>
+
+                <div class="hint-row">
+                    <p class="hint-text">
+                        The recommender matches your skills with each domain’s required stack
+                        using Jaccard similarity.
+                    </p>
+                    <div class="preset-row">
+                        <button
+                            class="preset-btn"
+                            data-preset="python, pandas, statistics, machine learning"
+                        >
+                            Data / ML
+                        </button>
+                        <button
+                            class="preset-btn"
+                            data-preset="html, css, javascript, react"
+                        >
+                            Web Dev
+                        </button>
+                        <button
+                            class="preset-btn"
+                            data-preset="figma, wireframing, prototyping, user research"
+                        >
+                            UI / UX
+                        </button>
+                    </div>
+                </div>
+
+                <button id="recommendBtn" class="btn-primary">
+                    <span class="icon">⚡</span>
+                    <span>Generate Domain Recommendations</span>
+                </button>
+
+                <div id="userSkillsChips" class="chip-row" aria-live="polite"></div>
+
+                <div class="panel-footer">
+                    <span>
+                        Matching method:
+                        <span class="highlight">Jaccard similarity</span> over skill sets.
+                    </span>
+                    <span>
+                        Implementation:
+                        <span class="strong">HTML · CSS · JavaScript (no frameworks)</span>
+                    </span>
+                </div>
+            </section>
+
+            <!-- Right: Results Panel -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Recommended internship domains</div>
+                        <p class="panel-sub">
+                            Sorted by similarity between your skills and domain requirements.
+                        </p>
+                    </div>
+                    <span class="panel-tag">Step 2 · Ranking</span>
+                </div>
+
+                <div class="results-meta-row">
+                    <div class="results-title">Top matches</div>
+                    <div class="results-meta" id="resultsMeta">Waiting for your skills…</div>
+                </div>
+
+                <div class="scroll-area" id="resultsContainer">
+                    <p class="empty-state">
+                        Start by entering your skills on the left and click
+                        <span>“Generate Domain Recommendations”</span>. The top domains will
+                        appear here with highlighted overlapping skills.
+                    </p>
+                </div>
+
+                <div class="panel-footer">
+                    <span>
+                        Green chips =
+                        <span class="highlight">skills you already have</span>.
+                    </span>
+                    <span>
+                        Red dashed chips =
+                        <span class="strong">recommended skills to learn next</span>.
+                    </span>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            © 2025 StaxTech Internship Assistant – Internship Domain Recommender.
+        </footer>
+    </div>
+
+    <script>
+        // -----------------------------
+        // Domain data (can be extended)
+        // -----------------------------
+        const DOMAINS = [
+            {
+                name: "AI & Machine Learning",
+                skills: [
+                    "python",
+                    "statistics",
+                    "pandas",
+                    "machine learning",
+                    "scikit-learn",
+                    "regression",
+                    "classification",
+                ],
+            },
+            {
+                name: "Data Science & Analytics",
+                skills: [
+                    "python",
+                    "pandas",
+                    "numpy",
+                    "statistics",
+                    "sql",
+                    "visualization",
+                    "power bi",
+                    "tableau",
+                ],
+            },
+            {
+                name: "Deep Learning & Computer Vision",
+                skills: [
+                    "python",
+                    "pytorch",
+                    "tensorflow",
+                    "cnn",
+                    "image processing",
+                    "opencv",
+                    "object detection",
+                ],
+            },
+            {
+                name: "Natural Language Processing (NLP)",
+                skills: [
+                    "python",
+                    "nlp",
+                    "text preprocessing",
+                    "transformers",
+                    "hugging face",
+                    "spacy",
+                    "sentiment analysis",
+                ],
+            },
+            {
+                name: "Full-Stack Web Development",
+                skills: [
+                    "html",
+                    "css",
+                    "javascript",
+                    "react",
+                    "node.js",
+                    "express",
+                    "rest api",
+                    "mongodb",
+                ],
+            },
+            {
+                name: "Frontend Engineering",
+                skills: [
+                    "html",
+                    "css",
+                    "javascript",
+                    "react",
+                    "typescript",
+                    "responsive design",
+                    "tailwind css",
+                ],
+            },
+            {
+                name: "Backend & API Development",
+                skills: [
+                    "node.js",
+                    "express",
+                    "rest api",
+                    "authentication",
+                    "sql",
+                    "mongodb",
+                    "postgresql",
+                ],
+            },
+            {
+                name: "Mobile App Development",
+                skills: [
+                    "flutter",
+                    "dart",
+                    "android",
+                    "ios",
+                    "firebase",
+                    "ui design",
+                    "state management",
+                ],
+            },
+            {
+                name: "Cloud & DevOps",
+                skills: [
+                    "aws",
+                    "docker",
+                    "linux",
+                    "ci/cd",
+                    "github actions",
+                    "kubernetes",
+                    "terraform",
+                ],
+            },
+            {
+                name: "Data Engineering",
+                skills: [
+                    "sql",
+                    "python",
+                    "etl",
+                    "airflow",
+                    "data pipelines",
+                    "spark",
+                    "data warehousing",
+                ],
+            },
+            {
+                name: "Cyber Security",
+                skills: [
+                    "networking",
+                    "linux",
+                    "security",
+                    "python",
+                    "vulnerability assessment",
+                    "penetration testing",
+                ],
+            },
+            {
+                name: "Internet of Things (IoT)",
+                skills: [
+                    "embedded systems",
+                    "arduino",
+                    "raspberry pi",
+                    "sensors",
+                    "mqtt",
+                    "c programming",
+                ],
+            },
+            {
+                name: "UI / UX Design",
+                skills: [
+                    "figma",
+                    "wireframing",
+                    "prototyping",
+                    "user research",
+                    "design systems",
+                    "ux writing",
+                ],
+            },
+            {
+                name: "Product Management",
+                skills: [
+                    "roadmapping",
+                    "requirement gathering",
+                    "user stories",
+                    "competitive analysis",
+                    "stakeholder communication",
+                ],
+            },
+            {
+                name: "QA & Test Automation",
+                skills: [
+                    "manual testing",
+                    "test cases",
+                    "selenium",
+                    "api testing",
+                    "postman",
+                    "jest",
+                    "cypress",
+                ],
+            },
+        ];
+
+        // -----------------------------
+        // Utilities
+        // -----------------------------
+        function cleanSkills(input) {
+            return input
+                .split(",")
+                .map((s) => s.trim().toLowerCase())
+                .filter((s) => s.length > 0);
+        }
+
+        function jaccardSimilarity(setA, setB) {
+            const intersection = new Set([...setA].filter((x) => setB.has(x)));
+            const union = new Set([...setA, ...setB]);
+            return union.size === 0 ? 0 : intersection.size / union.size;
+        }
+
+        function renderUserSkillsChips(userSkills) {
+            const container = document.getElementById("userSkillsChips");
+            container.innerHTML = "";
+
+            if (!userSkills.length) return;
+
+            userSkills.forEach((skill) => {
+                const chip = document.createElement("span");
+                chip.className = "chip";
+                chip.textContent = skill;
+                container.appendChild(chip);
+            });
+        }
+
+        function renderResults(recommendations, userSkillSet, userSkills) {
+            const container = document.getElementById("resultsContainer");
+            container.innerHTML = "";
+
+            if (!userSkills.length) {
+                container.innerHTML =
+                    '<p class="empty-state">No skills detected. Please enter at least one skill on the left panel.</p>';
+                return;
+            }
+
+            if (!recommendations.length || recommendations.every((r) => r.score === 0)) {
+                container.innerHTML =
+                    '<p class="empty-state">No overlapping skills found. Try adding more general skills like <span>python</span>, <span>html</span>, <span>figma</span>, or <span>statistics</span>.</p>';
+                return;
+            }
+
+            recommendations.forEach((rec, idx) => {
+                const { name, skills, score } = rec;
+
+                const card = document.createElement("div");
+                card.className = "result-card";
+
+                const top = document.createElement("div");
+                top.className = "result-top";
+
+                const domainTitle = document.createElement("div");
+                domainTitle.className = "result-domain";
+                domainTitle.textContent = `${idx + 1}. ${name}`;
+
+                const scoreEl = document.createElement("div");
+                scoreEl.className = "result-score";
+                scoreEl.textContent = `Match score: ${score.toFixed(2)}`;
+
+                top.appendChild(domainTitle);
+                top.appendChild(scoreEl);
+                card.appendChild(top);
+
+                const pillRow = document.createElement("div");
+                pillRow.className = "pill-row";
+
+                skills.forEach((skill) => {
+                    const pill = document.createElement("span");
+                    pill.className = "pill";
+                    pill.textContent = skill;
+
+                    if (userSkillSet.has(skill)) {
+                        pill.classList.add("highlight");
+                    } else {
+                        pill.classList.add("miss");
+                    }
+
+                    pillRow.appendChild(pill);
+                });
+
+                card.appendChild(pillRow);
+                container.appendChild(card);
+            });
+        }
+
+        function updateMeta(recommendations, userSkills) {
+            const meta = document.getElementById("resultsMeta");
+
+            if (!userSkills.length) {
+                meta.textContent = "Waiting for your skills…";
+                return;
+            }
+
+            const active = recommendations.filter((r) => r.score > 0);
+            if (!active.length) {
+                meta.textContent = `0 overlapping domains for ${
+                    userSkills.length
+                } skill${userSkills.length > 1 ? "s" : ""}`;
+                return;
+            }
+
+            meta.textContent = `${active.length} domain${
+                active.length > 1 ? "s" : ""
+            } ranked for ${userSkills.length} skill${userSkills.length > 1 ? "s" : ""}`;
+        }
+
+        // -----------------------------
+        // Main interaction
+        // -----------------------------
+        const skillsInputEl = document.getElementById("skillsInput");
+        const recommendBtn = document.getElementById("recommendBtn");
+
+        recommendBtn.addEventListener("click", () => {
+            const rawInput = skillsInputEl.value.trim();
+            const userSkills = cleanSkills(rawInput);
+            const userSkillSet = new Set(userSkills);
+
+            renderUserSkillsChips(userSkills);
+
+            const recommendations = DOMAINS.map((domain) => {
+                const domainSkillSet = new Set(domain.skills);
+                const score = jaccardSimilarity(userSkillSet, domainSkillSet);
+                return {
+                    name: domain.name,
+                    skills: domain.skills,
+                    score,
+                };
+            }).sort((a, b) => b.score - a.score);
+
+            updateMeta(recommendations, userSkills);
+            renderResults(recommendations, userSkillSet, userSkills);
+        });
+
+        // Preset buttons to quickly demo profiles
+        document.querySelectorAll(".preset-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const preset = btn.getAttribute("data-preset") || "";
+                skillsInputEl.value = preset;
+                skillsInputEl.focus();
+            });
+        });
+    </script>
+</body>
+</html>
